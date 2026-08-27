@@ -20,13 +20,8 @@ def analyze(image: UploadFile = File ()):
 
     #UploadFile object is image, file accesses file object
     contents = image.file.read()
+
     
-    #convert bytes to numpy array 
-    array = np.frombuffer(contents, np.uint8)
-    
-    #decodes to image
-    img = cv2.imdecode(array, cv2.IMREAD_COLOR)
-    
-    return {"message": "Image received"}
+    return analyze_image(contents); 
 
 #test if it works uvicorn main:app --reload
