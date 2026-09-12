@@ -1,0 +1,51 @@
+filename,source_film,split,2d,3d,cel_shading,notes
+2 - QbFFM8g.jpg,when_marnie_was_there,train,1,0,0,
+3 - Y7YJVIO.jpg,when_marnie_was_there,train,1,0,0,
+4 - hX65L2O.jpg,when_marnie_was_there,train,1,0,0,
+5 - dt3JNRN.jpg,when_marnie_was_there,train,1,0,0,
+6 - 1UdlJc1.jpg,when_marnie_was_there,train,1,0,0,
+7 - DweuAJM.jpg,when_marnie_was_there,train,1,0,0,
+8 - VtO6GnG.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. birch bedpost and canopy bed, precise perspective on desk and window, no object to test for volume
+9 - G2pdUiB.jpg,when_marnie_was_there,train,1,0,0,
+10 - hblYpaZ.jpg,when_marnie_was_there,train,1,0,0,
+11 - EGwIgCh.jpg,when_marnie_was_there,train,1,0,0,
+12 - c4sZrNp.jpg,when_marnie_was_there,train,1,0,0,
+13 - c8H9SVX.jpg,when_marnie_was_there,train,1,0,0,
+14 - ttTWKwr.jpg,when_marnie_was_there,train,1,0,0,
+15 - nRS7JqU.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. lantern lit stairs crowd, figures vary in pose and size, no instancing tell
+16 - I8cHBIe.jpg,when_marnie_was_there,train,1,0,0,
+17 - CW3CyVU.jpg,when_marnie_was_there,train,1,0,0,
+18 - JitZpKT.jpg,when_marnie_was_there,train,1,0,0,
+19 - axa9HYC.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. hair glow is a lighting and compositing effect, not geometry
+20 - EXWF0V0.jpg,when_marnie_was_there,train,1,0,0,
+21 - bLA6RPP.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. sun flare and lens effect over lake is compositing, not geometry
+22 - L3Mps8K.jpg,when_marnie_was_there,train,1,0,0,
+23 - EBkvIsA.jpg,when_marnie_was_there,train,1,0,0,
+24 - XyeL9pC.jpg,when_marnie_was_there,train,1,0,0,
+25 - uPA6Yy2.jpg,when_marnie_was_there,train,1,0,0,
+26 - bKJO3y3.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. victorian bedroom with ornate furniture, precise wall and desk perspective, no volume test object
+27 - yUoSkxH.jpg,when_marnie_was_there,train,1,0,0,
+28 - vgnZHps.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. many individually flat shaded hands, no repeated instance tell
+29 - 7gppxBh.jpg,when_marnie_was_there,train,1,0,0,
+30 - Pmyuu2s.jpg,when_marnie_was_there,train,1,0,0,
+31 - ruKrrp9.jpg,when_marnie_was_there,train,1,0,0,
+32 - DKZNw4S.jpg,when_marnie_was_there,train,1,0,0,
+33 - MSFXja8.jpg,when_marnie_was_there,train,1,0,0,
+34 - RwKNNFL.jpg,when_marnie_was_there,train,1,0,0,
+35 - QinGu6D.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. childs bedroom with bay window sea view, precise perspective but no volume test object
+36 - czueZnb.jpg,when_marnie_was_there,train,1,0,0,
+37 - 8A9WmCD.jpg,when_marnie_was_there,train,1,0,0,
+39 - 5BEDXJk.jpg,when_marnie_was_there,train,1,0,0,
+40 - ey1fIpL.jpg,when_marnie_was_there,train,1,0,0,
+41 - d2K76mU.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. lightning bolts are a digital effect layer over a flat painted tower
+42 - yUvwEO3.jpg,when_marnie_was_there,train,1,0,0,
+43 - 40aHndx.jpg,when_marnie_was_there,train,1,0,0,
+44 - 9imFQR5.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. rain and lightning are effect layers, character is flat cel
+45 - YnmsIVc.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. house facade at dusk with girl in lit window, precise perspective but no volume test object
+46 - 2bqE2Ly.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. tear highlights are small painted specular dots, not curved surface cg tells
+47 - kmoVexq.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. same as above, tear highlights painted not rendered
+48 - pKXuQ1r.jpg,when_marnie_was_there,train,1,0,0,unconfirmed source film. fisherman and two girls on boat, characters unrecognized from established cast, verify before finalizing
+49 - wYX33fR.jpg,when_marnie_was_there,train,1,0,0,3d=0 confirmed. bedroom scene, precise ceiling and furniture perspective, no volume test object
+50 - uflXo51.jpg,when_marnie_was_there,train,1,0,0,
+51 - twGlrTc.jpg,when_marnie_was_there,train,1,0,0,
+52 - IhUOwrq.jpg,when_marnie_was_there,train,1,0,0,
