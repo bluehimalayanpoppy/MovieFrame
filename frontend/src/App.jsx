@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Background from "./Background";
+import Scene from "./Scene";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/analyze";
@@ -42,7 +42,7 @@ export default function App() {
       // fetch throws a TypeError when it can't reach the server at all
       setError(
         err instanceof TypeError
-          ? "Couldn't reach the backend. Is uvicorn running on port 8000?"
+          ? "Couldn't reach the backend. It may be waking up, so try again in a minute."
           : err.message
       );
     } finally {
@@ -52,7 +52,7 @@ export default function App() {
 
   return (
     <>
-      <Background />
+      <Scene />
 
       <main className="container">
         <header className="hero">
