@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 
-// Put these stills in frontend/public/backgrounds/ and match each film name.
-// Studio Ghibli released these stills for free use "within common sense": https://www.ghibli.jp/works/
+// stills in frontend/public/backgrounds/ and match each film name.
+// studio Ghibli released these stills for free use "within common sense": https://www.ghibli.jp/works/
 const SLIDES = [
   { src: "/backgrounds/1.jpg", film: "Spirited Away" },
   { src: "/backgrounds/2.jpg", film: "The Wind Rises" },
-  { src: "/backgrounds/3.jpg", film: "Ponyo" },
-  { src: "/backgrounds/4.jpg", film: "When Marnie Was There" },
-  { src: "/backgrounds/5.jpg", film: "The Tale of the Princess Kaguya" },
+  { src: "/backgrounds/3.jpg", film: "Arrietty" },
+  { src: "/backgrounds/4.jpg", film: "Spirited Away" },
+  { src: "/backgrounds/5.jpg", film: "The Wind Rises" },
 ];
 
 const SLIDE_MS = 8000; // time each still stays on screen
 
-// Full-screen slideshow: each still slowly pans and zooms, then crossfades to the next.
+// full-screen slideshow: each still slowly pans and zooms, then crossfades to the next.
 export default function Background() {
   const [index, setIndex] = useState(0);
 
