@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Scene from "./Scene";
+import Background from "./Background";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/analyze";
@@ -52,7 +52,7 @@ export default function App() {
 
   return (
     <>
-      <Scene />
+      <Background />
 
       <main className="container">
         <header className="hero">
