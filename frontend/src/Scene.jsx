@@ -13,6 +13,9 @@ const STILLS = [
 const TILE = 120; // length of one hill tile; two tiles leapfrog to make the hills endless
 const SPEED = 4; // how fast the hills roll toward the camera
 const SKY = 0xdfe8e0; // fog color, matches the horizon so hills fade into the sky
+const FEATHER = 0.22; // how far the still edges dissolve inward (0 to 0.5, bigger is softer)
+const LOOK_X = 18; // how far the arrow keys swing the view left and right
+const LOOK_Y = 7; // how far the arrow keys swing the view up and down
 
 // Height of the ground at (x, z). Every wave in z repeats exactly once per tile,
 // so the end of one tile lines up perfectly with the start of the next.
@@ -34,6 +37,49 @@ function toonGradient() {
   tex.magFilter = THREE.NearestFilter;
   tex.needsUpdate = true;
   return tex;
+}
+
+// Borderless still: the image alpha fades to zero toward every edge,
+// so it dissolves into the scene instead of sitting in a frame.
+function stillMaterial(texture) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: texture },
+      opacity: { value: 0 }, // driven per frame by distance
+      ready: { value: 0 }, // flips to 1 once the image has loaded
+      feather: { value: FEATHER },
+    },
+    transparent: true,
+    depthWrite: false,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D map;
+      uniform float opacity;
+      uniform float ready;
+      uniform float feather;
+      varying vec2 vUv;
+      void main() {
+        vec2 d = min(vUv, 1.0 - vUv); // distance to the nearest edge on each axis
+        float edge = smoothstep(0.0, feather, d.x) * smoothstep(0.0, feather, d.y);
+        vec4 c = texture2D(map, vUv);
+        gl_FragColor = vec4(c.rgb, edge * opacity * ready);
+        #include <colorspace_fragment>
+      }
+    `,
+  });
+}
+
+// Stills fade in far away and fade out as they pass the camera
+function fadeFor(z) {
+  const fadeIn = THREE.MathUtils.smoothstep(z, -95, -50);
+  const fadeOut = 1 - THREE.MathUtils.smoothstep(z, -4, 5);
+  return fadeIn * fadeOut;
 }
 
 export default function Scene() {
@@ -121,24 +167,20 @@ export default function Scene() {
       clouds.push(cloud);
     }
 
-    // Framed film stills floating along both sides of the path
+    // Film stills floating along both sides of the path, no frame, soft edges
     const loader = new THREE.TextureLoader();
-    const frameGeo = new THREE.PlaneGeometry(6.7, 3.76);
-    const photoGeo = new THREE.PlaneGeometry(6.4, 3.46);
-    const frameMat = new THREE.MeshBasicMaterial({ color: 0xf6f1e7 });
+    const photoGeo = new THREE.PlaneGeometry(6.7, 3.76);
     const photoMats = [];
     const stills = STILLS.map((src, i) => {
-      const texture = loader.load(src);
+      const photoMat = stillMaterial(null);
+      const texture = loader.load(src, () => {
+        photoMat.uniforms.ready.value = 1;
+      });
       texture.colorSpace = THREE.SRGBColorSpace;
-      const photoMat = new THREE.MeshBasicMaterial({ map: texture });
+      photoMat.uniforms.map.value = texture;
       photoMats.push(photoMat);
 
-      const still = new THREE.Group();
-      const frame = new THREE.Mesh(frameGeo, frameMat);
-      const photo = new THREE.Mesh(photoGeo, photoMat);
-      photo.position.z = 0.02; // just in front of the frame
-      still.add(frame, photo);
-
+      const still = new THREE.Mesh(photoGeo, photoMat);
       const side = i % 2 ? 1 : -1;
       still.position.set(
         side * THREE.MathUtils.randFloat(5.5, 7),
@@ -148,6 +190,7 @@ export default function Scene() {
       still.rotation.y = -side * 0.35; // angle toward the middle of the path
       still.userData.baseY = still.position.y;
       still.userData.phase = Math.random() * Math.PI * 2;
+      photoMat.uniforms.opacity.value = fadeFor(still.position.z);
       scene.add(still);
       return still;
     });
@@ -169,7 +212,24 @@ export default function Scene() {
     }
     window.addEventListener("pointermove", onPointerMove);
 
-    const target = new THREE.Vector3(0, 3.5, -40);
+    // Arrow keys swing the view while held, then ease back to center on release
+    const keys = {};
+    function onKeyDown(e) {
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.startsWith("Arrow")) {
+        keys[e.key] = true;
+        e.preventDefault(); // stops the page from scrolling
+      }
+    }
+    function onKeyUp(e) {
+      delete keys[e.key];
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+
+    const look = { x: 0, y: 0 }; // current swing, eased toward the held keys
+    const aim = new THREE.Vector3(0, 3.5, -40);
     const clock = new THREE.Clock();
     let frameId;
 
@@ -188,51 +248,14 @@ export default function Scene() {
         if (cloud.position.z > 20) cloud.position.z = -150;
       }
 
-      // Stills drift past slightly faster than the ground and bob gently
+      // Stills drift past slightly faster than the ground, bob gently and fade by distance
       for (const still of stills) {
         still.position.z += SPEED * 1.15 * dt;
         still.position.y = still.userData.baseY + Math.sin(t * 0.8 + still.userData.phase) * 0.25;
         if (still.position.z > 6) still.position.z -= 100;
+        still.material.uniforms.opacity.value = fadeFor(still.position.z);
       }
 
-      camera.position.x += (pointer.x * 1.2 - camera.position.x) * 0.04;
-      camera.position.y += (6 - pointer.y * 0.6 - camera.position.y) * 0.04;
-      camera.lookAt(target);
-
-      renderer.render(scene, camera);
-      frameId = requestAnimationFrame(animate);
-    }
-
-    if (reduceMotion) {
-      camera.lookAt(target);
-      // draw once the textures arrive, then hold still
-      THREE.DefaultLoadingManager.onLoad = () => renderer.render(scene, camera);
-      renderer.render(scene, camera);
-    } else {
-      animate();
-    }
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", layout);
-      window.removeEventListener("pointermove", onPointerMove);
-      [groundGeo, canopyGeo, trunkGeo, puffGeo, frameGeo, photoGeo].forEach((g) => g.dispose());
-      [groundMat, canopyMat, trunkMat, cloudMat, frameMat].forEach((m) => m.dispose());
-      photoMats.forEach((m) => {
-        m.map.dispose();
-        m.dispose();
-      });
-      gradientMap.dispose();
-      renderer.dispose();
-      mount.removeChild(renderer.domElement);
-    };
-  }, []);
-
-  return (
-    <div className="scene" aria-hidden="true">
-      <div ref={mountRef} className="scene-canvas" />
-      <div className="scene-shade" />
-      <p className="scene-credit">Stills © Studio Ghibli</p>
-    </div>
-  );
-}
+      // Arrow keys set where the view wants to point, the swing eases toward it
+      const wantX = ((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)) * LOOK_X;
+      const wantY = ((keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0)) * LOOK_Y;
