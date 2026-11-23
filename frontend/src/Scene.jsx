@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-// Film stills that float alongside the path (files in frontend/public/backgrounds/)
+// stills in frontend/public/backgrounds/
 const STILLS = [
   "/backgrounds/1.jpg",
   "/backgrounds/2.jpg",
@@ -10,15 +10,14 @@ const STILLS = [
   "/backgrounds/5.jpg",
 ];
 
-const TILE = 120; // length of one hill tile; two tiles leapfrog to make the hills endless
-const SPEED = 4; // how fast the hills roll toward the camera
-const SKY = 0xdfe8e0; // fog color, matches the horizon so hills fade into the sky
-const FEATHER = 0.22; // how far the still edges dissolve inward (0 to 0.5, bigger is softer)
-const LOOK_X = 18; // how far the arrow keys swing the view left and right
-const LOOK_Y = 7; // how far the arrow keys swing the view up and down
+const TILE = 120; // length of one hill tile
+const SPEED = 4; // hill speed toward the camera
+const SKY = 0xdfe8e0; // fog color, matches the horizon
+const FEATHER = 0.22; // edge fade width, 0 to 0.5
+const LOOK_X = 18; // arrow key swing, left and right
+const LOOK_Y = 7; // arrow key swing, up and down
 
-// Height of the ground at (x, z). Every wave in z repeats exactly once per tile,
-// so the end of one tile lines up perfectly with the start of the next.
+// ground height at (x, z), repeats every tile so tiles join seamlessly
 function groundHeight(x, z) {
   const k = (2 * Math.PI) / TILE;
   let h =
@@ -26,11 +25,11 @@ function groundHeight(x, z) {
     0.8 * Math.sin(5 * k * z - x * 0.19) +
     0.45 * Math.sin(9 * k * z + x * 0.33);
   const side = Math.abs(x);
-  if (side > 5) h += Math.min(((side - 5) / 10) ** 2 * 3, 14); // valley sides rise into hills
+  if (side > 5) h += Math.min(((side - 5) / 10) ** 2 * 3, 14); // raise the valley sides
   return h;
 }
 
-// Three hard brightness bands: the cel-shaded look
+// three hard brightness bands for the cel shaded look
 function toonGradient() {
   const tex = new THREE.DataTexture(new Uint8Array([90, 170, 255]), 3, 1, THREE.RedFormat);
   tex.minFilter = THREE.NearestFilter;
@@ -39,14 +38,13 @@ function toonGradient() {
   return tex;
 }
 
-// Borderless still: the image alpha fades to zero toward every edge,
-// so it dissolves into the scene instead of sitting in a frame.
+// still material with no frame, alpha fades out toward every edge
 function stillMaterial(texture) {
   return new THREE.ShaderMaterial({
     uniforms: {
       map: { value: texture },
-      opacity: { value: 0 }, // driven per frame by distance
-      ready: { value: 0 }, // flips to 1 once the image has loaded
+      opacity: { value: 0 }, // set per frame by distance
+      ready: { value: 0 }, // 1 once the image has loaded
       feather: { value: FEATHER },
     },
     transparent: true,
@@ -65,7 +63,7 @@ function stillMaterial(texture) {
       uniform float feather;
       varying vec2 vUv;
       void main() {
-        vec2 d = min(vUv, 1.0 - vUv); // distance to the nearest edge on each axis
+        vec2 d = min(vUv, 1.0 - vUv); // distance to the nearest edge per axis
         float edge = smoothstep(0.0, feather, d.x) * smoothstep(0.0, feather, d.y);
         vec4 c = texture2D(map, vUv);
         gl_FragColor = vec4(c.rgb, edge * opacity * ready);
@@ -75,7 +73,7 @@ function stillMaterial(texture) {
   });
 }
 
-// Stills fade in far away and fade out as they pass the camera
+// fade in from far away, fade out near the camera
 function fadeFor(z) {
   const fadeIn = THREE.MathUtils.smoothstep(z, -95, -50);
   const fadeOut = 1 - THREE.MathUtils.smoothstep(z, -4, 5);
@@ -102,12 +100,12 @@ export default function Scene() {
 
     const gradientMap = toonGradient();
 
-    // Lighting: warm sun plus soft sky light
+    // warm sun plus soft sky light
     const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
     sun.position.set(-20, 30, -10);
     scene.add(sun, new THREE.HemisphereLight(0xcfe6f5, 0x6f8f4e, 0.9));
 
-    // Shared geometry and materials, reused by every tile, tree and cloud
+    // shared geometry and materials
     const groundGeo = new THREE.PlaneGeometry(TILE, TILE, 120, 120);
     groundGeo.rotateX(-Math.PI / 2);
     const pos = groundGeo.attributes.position;
@@ -124,7 +122,7 @@ export default function Scene() {
     const puffGeo = new THREE.SphereGeometry(1, 16, 12);
     const cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap });
 
-    // Two hill tiles, each with its own scattered trees
+    // two hill tiles with random trees
     const tiles = [0, 1].map((n) => {
       const tile = new THREE.Group();
       tile.add(new THREE.Mesh(groundGeo, groundMat));
@@ -148,7 +146,7 @@ export default function Scene() {
       return tile;
     });
 
-    // Puffy clouds drifting overhead
+    // clouds drifting overhead
     const clouds = [];
     for (let c = 0; c < 7; c++) {
       const cloud = new THREE.Group();
@@ -167,7 +165,7 @@ export default function Scene() {
       clouds.push(cloud);
     }
 
-    // Film stills floating along both sides of the path, no frame, soft edges
+    // stills along both sides of the path
     const loader = new THREE.TextureLoader();
     const photoGeo = new THREE.PlaneGeometry(6.7, 3.76);
     const photoMats = [];
@@ -187,7 +185,7 @@ export default function Scene() {
         THREE.MathUtils.randFloat(5.5, 6.8),
         -12 - i * 20
       );
-      still.rotation.y = -side * 0.35; // angle toward the middle of the path
+      still.rotation.y = -side * 0.35; // angled toward the path
       still.userData.baseY = still.position.y;
       still.userData.phase = Math.random() * Math.PI * 2;
       photoMat.uniforms.opacity.value = fadeFor(still.position.z);
@@ -204,7 +202,7 @@ export default function Scene() {
     }
     window.addEventListener("resize", layout);
 
-    // Gentle camera sway toward the pointer
+    // camera sways toward the pointer
     const pointer = { x: 0, y: 0 };
     function onPointerMove(e) {
       pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -212,14 +210,14 @@ export default function Scene() {
     }
     window.addEventListener("pointermove", onPointerMove);
 
-    // Arrow keys swing the view while held, then ease back to center on release
+    // arrow keys swing the view while held, then ease back
     const keys = {};
     function onKeyDown(e) {
       const tag = e.target.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key.startsWith("Arrow")) {
         keys[e.key] = true;
-        e.preventDefault(); // stops the page from scrolling
+        e.preventDefault(); // blocks page scrolling
       }
     }
     function onKeyUp(e) {
@@ -228,16 +226,16 @@ export default function Scene() {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
 
-    const look = { x: 0, y: 0 }; // current swing, eased toward the held keys
+    const look = { x: 0, y: 0 }; // current swing
     const aim = new THREE.Vector3(0, 3.5, -40);
     const clock = new THREE.Clock();
     let frameId;
 
     function animate() {
-      const dt = Math.min(clock.getDelta(), 0.05); // cap so a background tab doesn't jump
+      const dt = Math.min(clock.getDelta(), 0.05); // capped so background tabs don't jump
       const t = clock.elapsedTime;
 
-      // Roll the hills toward the camera; a tile that passes behind jumps to the front
+      // hills roll forward, a tile behind the camera jumps to the front
       for (const tile of tiles) {
         tile.position.z += SPEED * dt;
         if (tile.position.z - TILE / 2 > 10) tile.position.z -= TILE * 2;
@@ -248,7 +246,7 @@ export default function Scene() {
         if (cloud.position.z > 20) cloud.position.z = -150;
       }
 
-      // Stills drift past slightly faster than the ground, bob gently and fade by distance
+      // stills drift, bob and fade by distance
       for (const still of stills) {
         still.position.z += SPEED * 1.15 * dt;
         still.position.y = still.userData.baseY + Math.sin(t * 0.8 + still.userData.phase) * 0.25;
@@ -256,6 +254,53 @@ export default function Scene() {
         still.material.uniforms.opacity.value = fadeFor(still.position.z);
       }
 
-      // Arrow keys set where the view wants to point, the swing eases toward it
+      // held keys set the target, the swing eases toward it
       const wantX = ((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)) * LOOK_X;
       const wantY = ((keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0)) * LOOK_Y;
+      look.x += (wantX - look.x) * 0.05;
+      look.y += (wantY - look.y) * 0.05;
+      aim.set(look.x, 3.5 + look.y, -40);
+
+      camera.position.x += (pointer.x * 1.2 - camera.position.x) * 0.04;
+      camera.position.y += (6 - pointer.y * 0.6 - camera.position.y) * 0.04;
+      camera.lookAt(aim);
+
+      renderer.render(scene, camera);
+      frameId = requestAnimationFrame(animate);
+    }
+
+    if (reduceMotion) {
+      camera.lookAt(aim);
+      // render once textures load, then hold still
+      THREE.DefaultLoadingManager.onLoad = () => renderer.render(scene, camera);
+      renderer.render(scene, camera);
+    } else {
+      animate();
+    }
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", layout);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      [groundGeo, canopyGeo, trunkGeo, puffGeo, photoGeo].forEach((g) => g.dispose());
+      [groundMat, canopyMat, trunkMat, cloudMat].forEach((m) => m.dispose());
+      photoMats.forEach((m) => {
+        m.uniforms.map.value.dispose();
+        m.dispose();
+      });
+      gradientMap.dispose();
+      renderer.dispose();
+      mount.removeChild(renderer.domElement);
+    };
+  }, []);
+
+  return (
+    <div className="scene" aria-hidden="true">
+      <div ref={mountRef} className="scene-canvas" />
+      <div className="scene-shade" />
+      <p className="scene-credit">Stills © Studio Ghibli</p>
+    </div>
+  );
+}
