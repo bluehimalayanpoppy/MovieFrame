@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 // stills in frontend/public/backgrounds/
 const STILLS = [
@@ -13,7 +14,11 @@ const STILLS = [
 const TILE = 120; // length of one hill tile
 const SPEED = 4; // hill speed toward the camera
 const SKY = 0xdfe8e0; // fog color, matches the horizon
-const FEATHER = 0.22; // edge fade width, 0 to 0.5
+const FEATHER = 0.3; // edge fade width, 0 to 0.5
+const STILL_W = 24; // still size, big enough to nearly fill the screen
+const STILL_H = 13.5;
+const STILL_GAP = 16; // depth between stills, small so they overlap
+const WRAP = STILLS.length * STILL_GAP; // distance before a still loops to the back
 const LOOK_X = 18; // arrow key swing, left and right
 const LOOK_Y = 7; // arrow key swing, up and down
 
@@ -36,6 +41,39 @@ function toonGradient() {
   tex.magFilter = THREE.NearestFilter;
   tex.needsUpdate = true;
   return tex;
+}
+
+// tall twisting trunk, the bend point at the top is saved for placing foliage
+function makeTrunk(seed) {
+  const geo = new THREE.CylinderGeometry(0.16, 0.34, 6, 7, 10, true);
+  geo.translate(0, 3, 0); // base sits at y = 0
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const t = p.getY(i) / 6;
+    p.setX(i, p.getX(i) + Math.sin(t * 3 + seed) * 0.55 * t);
+    p.setZ(i, p.getZ(i) + Math.cos(t * 2.4 + seed) * 0.4 * t);
+  }
+  geo.computeVertexNormals();
+  geo.userData.top = new THREE.Vector3(Math.sin(3 + seed) * 0.55, 6, Math.cos(2.4 + seed) * 0.4);
+  return geo;
+}
+
+// lumpy smooth blob used as a leaf clump
+function makeClump(seed) {
+  let geo = new THREE.IcosahedronGeometry(1, 2);
+  geo.deleteAttribute("normal");
+  geo.deleteAttribute("uv");
+  geo = mergeVertices(geo); // shared vertices give smooth shading
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const y = p.getY(i);
+    const z = p.getZ(i);
+    const f = 1 + 0.2 * Math.sin(x * 4 + seed) * Math.cos(y * 3 + seed * 1.3) * Math.sin(z * 5 + seed);
+    p.setXYZ(i, x * f, y * f, z * f);
+  }
+  geo.computeVertexNormals();
+  return geo;
 }
 
 // still material with no frame, alpha fades out toward every edge
@@ -73,11 +111,11 @@ function stillMaterial(texture) {
   });
 }
 
-// fade in from far away, fade out near the camera
+// fade in from far away, fade out before reaching the camera
 function fadeFor(z) {
-  const fadeIn = THREE.MathUtils.smoothstep(z, -95, -50);
-  const fadeOut = 1 - THREE.MathUtils.smoothstep(z, -4, 5);
-  return fadeIn * fadeOut;
+  const fadeIn = THREE.MathUtils.smoothstep(z, -76, -42);
+  const fadeOut = 1 - THREE.MathUtils.smoothstep(z, -10, 0);
+  return 0.92 * fadeIn * fadeOut; // under 1 so hills stay faintly visible behind
 }
 
 export default function Scene() {
@@ -115,29 +153,50 @@ export default function Scene() {
     groundGeo.computeVertexNormals();
 
     const groundMat = new THREE.MeshToonMaterial({ color: 0x8dbf6a, gradientMap });
-    const canopyGeo = new THREE.ConeGeometry(1.3, 3.6, 8);
-    const canopyMat = new THREE.MeshToonMaterial({ color: 0x3f7a4a, gradientMap });
-    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.25, 1.2, 6);
-    const trunkMat = new THREE.MeshToonMaterial({ color: 0x6b4a32, gradientMap });
+    const trunkMat = new THREE.MeshToonMaterial({ color: 0x3d2c24, gradientMap, side: THREE.DoubleSide });
+    const trunkGeos = [0, 2, 4].map(makeTrunk);
+    const clumpGeos = [1, 3, 5].map(makeClump);
+    // leaf colors from shaded to sunlit, higher clumps use the lighter ones
+    const leafMats = [0x2f6b3f, 0x4a8a45, 0x86bd52].map(
+      (color) => new THREE.MeshToonMaterial({ color, gradientMap })
+    );
     const puffGeo = new THREE.SphereGeometry(1, 16, 12);
     const cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap });
+
+    // one tree: twisted dark trunk with a layered crown of leaf clumps
+    function makeTree() {
+      const tree = new THREE.Group();
+      const trunkGeo = trunkGeos[Math.floor(Math.random() * trunkGeos.length)];
+      tree.add(new THREE.Mesh(trunkGeo, trunkMat));
+
+      const top = trunkGeo.userData.top;
+      for (let k = 0; k < 7; k++) {
+        const h = 4.4 + Math.random() * 3;
+        const shade = Math.min(2, Math.floor(((h - 4.4) / 3) * 3 + Math.random() * 0.6));
+        const clump = new THREE.Mesh(clumpGeos[Math.floor(Math.random() * clumpGeos.length)], leafMats[shade]);
+        clump.position.set(
+          top.x + THREE.MathUtils.randFloatSpread(3),
+          h,
+          top.z + THREE.MathUtils.randFloatSpread(3)
+        );
+        clump.scale.setScalar(THREE.MathUtils.randFloat(1.3, 2.3));
+        clump.scale.y *= 0.85;
+        tree.add(clump);
+      }
+      return tree;
+    }
 
     // two hill tiles with random trees
     const tiles = [0, 1].map((n) => {
       const tile = new THREE.Group();
       tile.add(new THREE.Mesh(groundGeo, groundMat));
 
-      for (let t = 0; t < 40; t++) {
-        const x = (Math.random() < 0.5 ? -1 : 1) * THREE.MathUtils.randFloat(9, 40);
+      for (let t = 0; t < 44; t++) {
+        const x = (Math.random() < 0.5 ? -1 : 1) * THREE.MathUtils.randFloat(7, 40);
         const z = THREE.MathUtils.randFloatSpread(TILE);
-        const tree = new THREE.Group();
-        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.y = 0.6;
-        const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-        canopy.position.y = 2.8;
-        tree.add(trunk, canopy);
-        tree.position.set(x, groundHeight(x, z) - 0.2, z);
-        tree.scale.setScalar(THREE.MathUtils.randFloat(0.7, 1.3));
+        const tree = makeTree();
+        tree.position.set(x, groundHeight(x, z) - 0.3, z);
+        tree.scale.setScalar(THREE.MathUtils.randFloat(0.9, 1.7));
         tile.add(tree);
       }
 
@@ -165,9 +224,9 @@ export default function Scene() {
       clouds.push(cloud);
     }
 
-    // stills along both sides of the path
+    // big overlapping stills, trees in front of them cover parts of the image
     const loader = new THREE.TextureLoader();
-    const photoGeo = new THREE.PlaneGeometry(6.7, 3.76);
+    const photoGeo = new THREE.PlaneGeometry(STILL_W, STILL_H);
     const photoMats = [];
     const stills = STILLS.map((src, i) => {
       const photoMat = stillMaterial(null);
@@ -181,11 +240,11 @@ export default function Scene() {
       const still = new THREE.Mesh(photoGeo, photoMat);
       const side = i % 2 ? 1 : -1;
       still.position.set(
-        side * THREE.MathUtils.randFloat(5.5, 7),
-        THREE.MathUtils.randFloat(5.5, 6.8),
-        -12 - i * 20
+        side * THREE.MathUtils.randFloat(3, 8),
+        THREE.MathUtils.randFloat(7.5, 8.5),
+        -14 - i * STILL_GAP
       );
-      still.rotation.y = -side * 0.35; // angled toward the path
+      still.rotation.y = -side * 0.2; // angled slightly toward the path
       still.userData.baseY = still.position.y;
       still.userData.phase = Math.random() * Math.PI * 2;
       photoMat.uniforms.opacity.value = fadeFor(still.position.z);
@@ -250,7 +309,7 @@ export default function Scene() {
       for (const still of stills) {
         still.position.z += SPEED * 1.15 * dt;
         still.position.y = still.userData.baseY + Math.sin(t * 0.8 + still.userData.phase) * 0.25;
-        if (still.position.z > 6) still.position.z -= 100;
+        if (still.position.z > 4) still.position.z -= WRAP;
         still.material.uniforms.opacity.value = fadeFor(still.position.z);
       }
 
@@ -284,8 +343,8 @@ export default function Scene() {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
-      [groundGeo, canopyGeo, trunkGeo, puffGeo, photoGeo].forEach((g) => g.dispose());
-      [groundMat, canopyMat, trunkMat, cloudMat].forEach((m) => m.dispose());
+      [groundGeo, puffGeo, photoGeo, ...trunkGeos, ...clumpGeos].forEach((g) => g.dispose());
+      [groundMat, trunkMat, cloudMat, ...leafMats].forEach((m) => m.dispose());
       photoMats.forEach((m) => {
         m.uniforms.map.value.dispose();
         m.dispose();
